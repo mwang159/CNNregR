@@ -159,7 +159,7 @@ sc_counts_list <- format_seurat_object(
   seurat_obj = my_seurat,
   celltype_col = "celltype",
   assay = "RNA",
-  slot = "counts"
+  layer = "counts"
 )
 ```
 
