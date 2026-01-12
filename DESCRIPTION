@@ -1,0 +1,32 @@
+Package: CNNregR
+Type: Package
+Title: R Interface for CNNreg Cell Type Deconvolution
+Version: 0.1.0
+Author: Xue Wang, Yuanhang Liu
+Maintainer: Xue Wang <wang.xue@mayo.edu>
+Authors@R: c(
+    person("Xue", "Wang", email = "wang.xue@mayo.edu", role = c("aut", "cre")),
+    person("Yuanhang", "Liu", email = "liu.yuanhang@mayo.edu", role = "aut"))
+Description: Provides R functions for preprocessing scRNA-seq and bulk RNA-seq data for CNNreg deconvolution analysis. Includes gene selection, quality filtering, reference generation, and wrapper functions to run CNNreg deconvolution from R.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Depends: 
+    R (>= 3.6.0)
+Imports:
+    matrixStats,
+    readr,
+    dplyr,
+    magrittr,
+    rlang,
+    edgeR,
+    stats,
+    utils,
+    biomaRt
+Suggests:
+    testthat (>= 3.0.0),
+    knitr,
+    rmarkdown,
+    Seurat
+RoxygenNote: 7.3.3
+URL: https://github.com/mwang159/CNNregR
+BugReports: https://github.com/mwang159/CNNregR/issues
