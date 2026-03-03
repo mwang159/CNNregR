@@ -69,9 +69,8 @@ run_cnnreg <- function(bulk_file,
   
   # Build command
   cmd <- sprintf(
-    "%s -M %s -bulk %s -ref %s -o %s -C %d -EP %d -pre %s",
+    "%s -bulk %s -ref %s -o %s -C %d -EP %d -pre %s",
     cnnreg_cmd,
-    mode,
     bulk_file,
     ref_file,
     output_dir,
