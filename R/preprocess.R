@@ -32,7 +32,6 @@
 #'
 #' @return List with:
 #'   \item{genes}{Character vector of selected gene names}
-#'   \item{size_factors}{TMM size factors for bulk samples}
 #'   \item{gene_stats}{Data.frame with gene statistics}
 #'   \item{gene_annotation}{Data.frame with gene annotations (if queried)}
 #'
@@ -88,8 +87,7 @@ select_genes <- function(bulk_counts,
   message("Calculating TMM normalization factors...")
   tmm <- edgeR::DGEList(t(bulk_counts))
   tmm <- edgeR::calcNormFactors(tmm)
-  size_factors <- 1 / tmm$samples$norm.factors
-  names(size_factors) <- rownames(bulk_counts)
+
   
   # Step 2: Filter bulk genes by annotation
   genes_bulk <- colnames(bulk_counts)
@@ -142,7 +140,8 @@ select_genes <- function(bulk_counts,
   bulk_sub <- bulk_counts[, genes_bulk]
   
   # Step 3: Calculate normalized expression and CV
-  bulk_norm <- t(t(bulk_sub) / size_factors)
+  effective_lib_size <- tmm$samples$lib.size * tmm$samples$norm.factors
+  bulk_norm      <- sweep(bulk_sub, 1, effective_lib_size, "/") * 1e6
   median_bulk <- matrixStats::colMedians(as.matrix(bulk_sub))
   names(median_bulk) <- genes_bulk
   
@@ -168,55 +167,60 @@ select_genes <- function(bulk_counts,
   message("After expression/CV filters: ", length(genes_bulk), " genes")
   
   # Step 5: Filter scRNA-seq genes
-  celltypes <- names(sc_counts_list)
-  
+  celltypes <- names(sc_counts_list[[1]])
+  genes     <- colnames(sc_counts_list[[1]][[1]])
   # Select cell-type-specific genes
-  gene_spe <- gene_excl <- vector("list", length(celltypes))
-  names(gene_spe) <- names(gene_excl) <- celltypes
-  
-  for (ct in celltypes) {
-    x <- sc_counts_list[[ct]]
-    detection_rate <- colSums(x > 0) / nrow(x)
-    genes_detected <- colnames(x)[detection_rate >= ref_min_detection]
-    
-    sum_expr <- colSums(x[, genes_detected])
-    med_expr <- median(sum_expr)
-    gene_excl[[ct]] <- genes_detected[sum_expr >= ref_max_housekeeping_factor * med_expr]
-    gene_spe[[ct]] <- setdiff(genes_detected, gene_excl[[ct]])
+  for(ii in 1:length(sc_counts_list)){
+      sc_counts <- sc_counts_list[[ii]]
+      gene.spe  <- gene.excl <- vector("list", length(celltypes))
+      names(gene.spe) <- names(gene.excl) <- celltypes
+      for (ct in celltypes) {
+          x <- sc_counts[[ct]]
+          detection_rate <- colSums(x > 0) / nrow(x)
+          genes_detected <- colnames(x)[detection_rate >= ref_min_detection]
+          sum_expr <- colSums(x[, genes_detected])
+          med_expr <- median(sum_expr)
+          gene_excl[[ct]] <- genes_detected[sum_expr >= ref_max_housekeeping_factor * med_expr]
+          gene_spe[[ct]] <- setdiff(genes_detected, gene_excl[[ct]])
+      }
+      gene.sc  <- setdiff(Reduce("union", gene.spe), Reduce("union", gene.excl))
+      genes    <- intersect(genes, gene.sc)
   }
-  
-  genes_sc <- setdiff(Reduce("union", gene_spe), Reduce("union", gene_excl))
-  
   # Intersect bulk and scRNA genes
-  genes <- intersect(genes_sc, genes_bulk)
+  genes <- intersect(genes, colnames(genes_bulk))
+  
+
   
   message("After scRNA-seq filtering: ", length(genes), " genes")
   
   # Step 6: Calculate discrimination score from scRNA-seq
-  sum_celltype <- lapply(celltypes, function(ct) {
-    colSums(sc_counts_list[[ct]][, genes])
-  })
+  gene.sel <- list(length(sc_counts_list))
+  for(ii in 1:length(sc_counts_list)){
+      sum_celltype <- lapply(celltypes, function(ct) {
+        colSums(sc_counts_list[[ct]][, genes])
+      })
   
-  norm_celltype <- lapply(sum_celltype, function(x) {
-    log2(1 + 1e6 * x / sum(x))
-  })
+      norm_celltype <- lapply(sum_celltype, function(x) {
+        log2(1 + 1e6 * x / sum(x))
+      })
   
-  expr_matrix <- do.call(rbind, norm_celltype)
+      expr_matrix <- do.call(rbind, norm_celltype)
   
-  dis_score <- apply(expr_matrix, 2, function(x) {
-    var(x)
-  })
+      dis_score <- apply(expr_matrix, 2, function(x) {
+        var(x)
+      })
   
-  # Keep top variance genes
-  threshold <- quantile(dis_score, ref_var_quantile)
-  genes <- genes[dis_score >= threshold]
+      # Keep top variance genes
+      threshold <- quantile(dis_score, ref_var_quantile)
+      gene.sel[[ii]] <- genes[dis_score >= threshold]
+  }
+  genes <- Reduce("union", gene.sel)
   
   # Gene statistics
   gene_stats <- data.frame(
     gene = genes,
     median_bulk = median_bulk[genes],
     cv_bulk = cv_bulk[genes],
-    dis_score = dis_score[genes],
     stringsAsFactors = FALSE
   )
   
@@ -224,11 +228,9 @@ select_genes <- function(bulk_counts,
   message("Selected ", length(genes), " marker genes")
   message("  Median expression: ", round(min(median_bulk[genes]), 2), " - ", round(max(median_bulk[genes]), 2))
   message("  CV: ", round(min(cv_bulk[genes]), 3), " - ", round(max(cv_bulk[genes]), 3))
-  message("  Discrimination score: ", round(min(dis_score[genes]), 3), " - ", round(max(dis_score[genes]), 3))
   
   result <- list(
     genes = genes,
-    size_factors = size_factors,
     gene_stats = gene_stats
   )
   
@@ -247,7 +249,6 @@ select_genes <- function(bulk_counts,
 #'
 #' @param bulk_counts Matrix or data.frame of bulk RNA-seq counts (samples × genes)
 #' @param genes Character vector of genes to include
-#' @param size_factors TMM size factors from select_genes
 #' @param quantile_norm Quantile for normalization (default: 0.99)
 #' @param bulk_min_cv_final Minimum CV threshold after final normalization (default: 0.0001)
 #' @param output_file Path to save CSV file (optional)
@@ -261,31 +262,26 @@ select_genes <- function(bulk_counts,
 #' bulk_df <- preprocess_bulk(
 #'   bulk_counts = bulk_data,
 #'   genes = result$genes,
-#'   size_factors = result$size_factors,
 #'   output_file = "bulk_processed.csv"
 #' )
 #' }
-preprocess_bulk <- function(bulk_counts,
+preprocess_bulk <- function(bulk_norm,
                              genes,
-                             size_factors,
                              quantile_norm = 0.99,
                              bulk_min_cv_final = 0.0001,
                              output_file = NULL) {
   
   # Subset genes
-  expr <- bulk_counts[, genes] + 0.00001
+  expr <- bulk_norm[, genes] + 0.00001
   
   # Transpose to genes × samples
   expr <- t(expr)
   
-  # Apply size factors
-  expr_norm <- expr / size_factors
-  
   # Quantile normalization across samples
-  quant <- apply(expr_norm, 2, function(x) {
+  quant <- apply(expr, 2, function(x) {
     quantile(x, quantile_norm)
   })
-  expr_norm <- expr_norm / median(quant)
+  expr_norm <- expr / median(quant)
   
   # Additional CV filtering
   cv <- apply(expr_norm, 1, function(x) {
