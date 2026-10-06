@@ -322,7 +322,8 @@ preprocess_bulk <- function(bulk_counts,
 #' @param bulk_df Preprocessed bulk data.frame (output from preprocess_bulk)
 #' @param genes Character vector of genes to include. Should be bulk_df$Gene from preprocess_bulk output
 #'   to ensure genes match between bulk and reference after final CV filtering.
-#' @param n_clusters Number of k-means clusters per cell type (default: 5)
+#' @param cluster should use the reference ("byRef") or divide cells by k-mean clustering ("k-mean")
+#' @param n_clusters if we do k-mean clustering, the number of clusters per cell type (default: 1)
 #' @param quantile_norm Quantile for normalization (default: 0.99)
 #' @param seed Random seed for k-means (default: 1235)
 #' @param output_file Path to save CSV file (optional)
@@ -348,8 +349,8 @@ preprocess_bulk <- function(bulk_counts,
 preprocess_reference <- function(sc_counts_list,
                                   bulk_df,
                                   genes,
-                                  cluster=NULL,
-                                  n_clusters = 5,
+                                  cluster="byRef",
+                                  n_clusters = 1,
                                   quantile_norm = 0.99,
                                   seed = 1235,
                                   output_file = NULL) {
