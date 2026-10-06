@@ -172,8 +172,8 @@ select_genes <- function(bulk_counts,
   # Select cell-type-specific genes
   for(ii in 1:length(sc_counts_list)){
       sc_counts <- sc_counts_list[[ii]]
-      gene.spe  <- gene.excl <- vector("list", length(celltypes))
-      names(gene.spe) <- names(gene.excl) <- celltypes
+      gene_spe  <- gene_excl <- vector("list", length(celltypes))
+      names(gene_spe) <- names(gene_excl) <- celltypes
       for (ct in celltypes) {
           x <- sc_counts[[ct]]
           detection_rate <- colSums(x > 0) / nrow(x)
@@ -183,8 +183,8 @@ select_genes <- function(bulk_counts,
           gene_excl[[ct]] <- genes_detected[sum_expr >= ref_max_housekeeping_factor * med_expr]
           gene_spe[[ct]] <- setdiff(genes_detected, gene_excl[[ct]])
       }
-      gene.sc  <- setdiff(Reduce("union", gene.spe), Reduce("union", gene.excl))
-      genes    <- intersect(genes, gene.sc)
+      gene_sc  <- setdiff(Reduce("union", gene_spe), Reduce("union", gene_excl))
+      genes    <- intersect(genes, gene_sc)
   }
   # Intersect bulk and scRNA genes
   genes <- intersect(genes, colnames(genes_bulk))
@@ -194,7 +194,7 @@ select_genes <- function(bulk_counts,
   message("After scRNA-seq filtering: ", length(genes), " genes")
   
   # Step 6: Calculate discrimination score from scRNA-seq
-  gene.sel <- list(length(sc_counts_list))
+  gene_sel <- list(length(sc_counts_list))
   for(ii in 1:length(sc_counts_list)){
       sum_celltype <- lapply(celltypes, function(ct) {
         colSums(sc_counts_list[[ct]][, genes])
@@ -212,9 +212,9 @@ select_genes <- function(bulk_counts,
   
       # Keep top variance genes
       threshold <- quantile(dis_score, ref_var_quantile)
-      gene.sel[[ii]] <- genes[dis_score >= threshold]
+      gene_sel[[ii]] <- genes[dis_score >= threshold]
   }
-  genes <- Reduce("union", gene.sel)
+  genes <- Reduce("union", gene_sel)
   
   # Gene statistics
   gene_stats <- data.frame(
@@ -265,12 +265,17 @@ select_genes <- function(bulk_counts,
 #'   output_file = "bulk_processed.csv"
 #' )
 #' }
-preprocess_bulk <- function(bulk_norm,
+preprocess_bulk <- function(bulk_counts,
                              genes,
                              quantile_norm = 0.99,
                              bulk_min_cv_final = 0.0001,
                              output_file = NULL) {
   
+  #Calculate TMM size factors using edgeR
+  message("Calculating TMM normalization factors...")
+  tmm <- edgeR::DGEList(t(bulk_counts))
+  tmm <- edgeR::calcNormFactors(tmm)
+
   # Subset genes
   expr <- bulk_norm[, genes] + 0.00001
   
