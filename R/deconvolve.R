@@ -8,7 +8,7 @@
 #' @param ref_file Path to preprocessed reference CSV file
 #' @param output_dir Output directory for results
 #' @param n_celltypes Number of cell types (kernel size)
-#' @param epochs Maximum training epochs (default: 50000)
+#' @param epochs Maximum training epochs (default: 10000*n_celltypes)
 #' @param prefix Output file prefix (default: "deconv")
 #' @param mode CNNreg mode: "train", "evaluate", "predict", "explain" (default: "train")
 #' @param python_path Path to Python executable with CNNreg installed (default: "python")
@@ -37,7 +37,7 @@ run_cnnreg <- function(bulk_file,
                        ref_file,
                        output_dir,
                        n_celltypes,
-                       epochs = 50000,
+                       epochs = 10000*n_celltypes,
                        prefix = "deconv",
                        mode = "train",
                        python_path = "python",
