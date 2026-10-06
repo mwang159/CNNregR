@@ -362,12 +362,13 @@ preprocess_reference <- function(sc_counts_list,
   quant_bulk_max <- quantile(apply(bulk_matrix, 2, function(x) {quantile(x, 1)}), 0.5)
   message("Bulk quantiles: 75th=", round(quant_bulk_75, 3), ", max=", round(quant_bulk_max, 3))
   
-  ## create list to keep data
-  ll.multi       <- list()
+  ## create list to keep processed reference data
+  ll.ref <- list()
   
   ## to prepare the reference by input sn/scRNAseq datasets
   if(cluster == "byRef"){
         N.cl <- length(sc_counts_list)
+        sim_expr <- list()
         for(ii in 1:length(sc_counts_list)){
             sc_counts    <- sc_counts_list[[ii]]
             for(ct in celltypes){
@@ -388,6 +389,7 @@ preprocess_reference <- function(sc_counts_list,
 
                 # Apply scaling
                 mean_expr_scaled <- s_factor * mean_expr_norm
+              
                 # Special scaling for highly expressed genes
                 idx_large <- which(mean_expr_norm > 1)
                 if (length(idx_large) >= 2) {
@@ -400,20 +402,15 @@ preprocess_reference <- function(sc_counts_list,
                     mean_expr_scaled[idx_large] <- s_factor + vv
                 }
                 sim_expr[[ct]] <- mean_expr_scaled
-              
-                # Special scaling for highly expressed genes
-                idx.large      <- which(ll.sort[[ss]] > 1)
-                if(length(idx.large)>=2){
-                    tmp.idx        <- mean_expr_scaled[idx.large]
-                    tmp.min        <- min(tmp[idx.large])
-                    tmp.max        <- max(tmp[idx.large])
-                    vv             <- quant_bulk_max*(tmp.idx-tmp.min)/(tmp.max-tmp.min)
-                    ll.sort[[ss]][idx.large] <- s.factor + vv
-                }}
-            cc <- c()
-            for(gene in genes){
-                cc <- c(cc, sapply(celltypes, function(x){ ll.sort[[x]][gene] })) }
-            ll.multi[[ii]] <- cc
+         }
+         # Create wide format: gene_celltype columns
+         sim_vec <- c()
+         for (gene in genes) {
+            for (ct in celltypes) {
+                sim_vec <- c(sim_vec, sim_expr[[ct]][gene])
+            }
+         }
+         ll.ref[[ii]] <- sim_vec
       }
   }
   # K-means clustering for each cell type
@@ -428,13 +425,13 @@ preprocess_reference <- function(sc_counts_list,
       }
   
       ## Generate simulated references from clusters
-      for (i in 1:n_clusters) {
-        message("Generating reference ", i, "/", n_clusters)
+      for (ii in 1:n_clusters) {
+        message("Generating reference ", ii, "/", n_clusters)
     
         sim_expr <- list()
         for (ct in celltypes) {
           # Get cells in cluster i
-          cluster_idx <- which(cl_list[[ct]]$cluster == i)
+          cluster_idx <- which(cl_list[[ct]]$cluster == ii)
           cluster_expr <- sc_counts_list[[ct]][cluster_idx, genes, drop = FALSE]
       
           # Average expression in cluster
@@ -479,13 +476,13 @@ preprocess_reference <- function(sc_counts_list,
             sim_vec <- c(sim_vec, sim_expr[[ct]][gene])
           }
         }
-        ll.multi[[ii]] <- sim_vec
+        ll.ref[[ii]] <- sim_vec
       }
   }
 
   
   # Create data.frame
-  expr_matrix <- do.call(rbind, ll.multi)
+  expr_matrix <- do.call(rbind, ll.ref)
   df_out <- data.frame(Sample = paste0("sim_", 1:n_clusters), expr_matrix, check.names = FALSE)
   
   # Column names: Gene_CellType
