@@ -396,9 +396,9 @@ preprocess_reference <- function(sc_counts_list,
       }
   }
   # K-means clustering for each cell type
-  message("Performing k-means clustering...")
   set.seed(seed)
   if( cluster=="k-mean" && length(N.cl) == 1 && !is.na(N.cl) && N.cl > 0){
+      message("Performing k-means clustering...")
       cl_list <- list()
       for (ct in celltypes) {
         message("  Clustering ", ct, "...")
