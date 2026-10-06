@@ -356,37 +356,58 @@ preprocess_reference <- function(sc_counts_list,
                                   output_file = NULL) {
   
   celltypes <- names(sc_counts_list[[1]])
-  mm.bk       <- as.matrix(bulk_df[,2:ncol(bulk_df)])
-  quant.bk    <- quantile(apply(mm.bk, 2, function(x){quantile(x, 0.75)}), 0.5)
-  quant.mx    <- quantile(apply(mm.bk, 2, function(x){quantile(x, 1)}), 0.5)
-  ll.multi    <- list()
-  if(cluster == "byRef"){ N.cl <- length(sc_counts_list)}
-
+  ## Calculate bulk quantiles for scaling
+  bulk_matrix    <- as.matrix(bulk_df[, 2:ncol(bulk_df)])
+  quant_bulk_75  <- quantile(apply(bulk_matrix, 2, function(x) {quantile(x, 0.75)}), 0.5)
+  quant_bulk_max <- quantile(apply(bulk_matrix, 2, function(x) {quantile(x, 1)}), 0.5)
+  message("Bulk quantiles: 75th=", round(quant_bulk_75, 3), ", max=", round(quant_bulk_max, 3))
+  
+  ## create list to keep data
+  ll.multi       <- list()
+  
   ## to prepare the reference by input sn/scRNAseq datasets
-  if(cluster == "byRef"){      
+  if(cluster == "byRef"){
+        N.cl <- length(sc_counts_list)
         for(ii in 1:length(sc_counts_list)){
-            ll.sc <- sc_counts_list[[ii]]
-            ll.sort <- vector("list", length(celltypes))
-            names(ll.sort) <- celltypes
-            for(ss in celltypes){
-                mm             <- ll.sc[[ss]][, genes, drop=F]
-                ll.sort[[ss]]  <- colMeans(mm)
-                quant          <- quantile(ll.sort[[ss]], quantile_norm)
-                ll.sort[[ss]]  <- ll.sort[[ss]]/quant
-                quant.sc       <- quantile(ll.sort[[ss]], 0.75)
-                s.factor       <- quant.bk/quant.sc
+            sc_counts    <- sc_counts_list[[ii]]
+            for(ct in celltypes){
+                mean_expr      <- colMeans(sc_counts[[ct]][, genes, drop = FALSE])
+              
+                # Normalize by quantile
+                quant <- quantile(mean_expr, quantile_norm)
+                mean_expr_norm <- mean_expr / quant        
+              
+                # Calculate scaling factor to match bulk
+                quant_sc_75 <- quantile(mean_expr_norm, 0.75)
+                s_factor <- quant_bulk_75 / quant_sc_75
                 print(s.factor)
-                s.factor       <- min(s.factor, 5)
-                s.factor       <- max(s.factor, 0.2)
+              
+                # Constrain scaling factor
+                s_factor <- min(s_factor, 5)
+                s_factor <- max(s_factor, 0.2)
+
+                # Apply scaling
+                mean_expr_scaled <- s_factor * mean_expr_norm
+                # Special scaling for highly expressed genes
+                idx_large <- which(mean_expr_norm > 1)
+                if (length(idx_large) >= 2) {
+                    tmp_idx <- mean_expr_scaled[idx_large]
+                    tmp_min <- min(mean_expr_scaled[idx_large])
+                    tmp_max <- max(mean_expr_scaled[idx_large])
+           
+                    # Scale to bulk max
+                    vv <- quant_bulk_max * (tmp_idx - tmp_min) / (tmp_max - tmp_min)
+                    mean_expr_scaled[idx_large] <- s_factor + vv
+                }
+                sim_expr[[ct]] <- mean_expr_scaled
+              
+                # Special scaling for highly expressed genes
                 idx.large      <- which(ll.sort[[ss]] > 1)
-                idx.small      <- which(ll.sort[[ss]] <= 1)
-                ll.sort[[ss]]  <- s.factor * ll.sort[[ss]]
-                tmp            <- ll.sort[[ss]]
                 if(length(idx.large)>=2){
-                    tmp.idx        <- ll.sort[[ss]][idx.large]
+                    tmp.idx        <- mean_expr_scaled[idx.large]
                     tmp.min        <- min(tmp[idx.large])
                     tmp.max        <- max(tmp[idx.large])
-                    vv             <- quant.mx*(tmp.idx-tmp.min)/(tmp.max-tmp.min)
+                    vv             <- quant_bulk_max*(tmp.idx-tmp.min)/(tmp.max-tmp.min)
                     ll.sort[[ss]][idx.large] <- s.factor + vv
                 }}
             cc <- c()
@@ -405,17 +426,6 @@ preprocess_reference <- function(sc_counts_list,
         sc_matrix <- sc_counts_list[[ct]][, genes]
         cl_list[[ct]] <- kmeans(log2(1 + sc_matrix), centers = n_clusters, nstart = 10)
       }
-  
-     # Calculate bulk quantiles for scaling
-      bulk_matrix <- as.matrix(bulk_df[, 2:ncol(bulk_df)])
-      quant_bulk_75 <- quantile(apply(bulk_matrix, 2, function(x) {
-        quantile(x, 0.75)
-      }), 0.5)
-      quant_bulk_max <- quantile(apply(bulk_matrix, 2, function(x) {
-        quantile(x, 1)
-      }), 0.5)
-  
-      message("Bulk quantiles: 75th=", round(quant_bulk_75, 3), ", max=", round(quant_bulk_max, 3))
   
       ## Generate simulated references from clusters
       for (i in 1:n_clusters) {
