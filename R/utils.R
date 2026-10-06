@@ -181,7 +181,7 @@ read_cnnreg_proportions <- function(file, rename_samples = NULL) {
 #' Checks that input data meets CNNreg requirements
 #'
 #' @param bulk_counts Bulk RNA-seq count matrix
-#' @param sc_counts_list List of scRNA-seq count matrices
+#' @param sc_counts_list sc_counts_list List of List of scRNA-seq count matrices, each list is a reference set
 #'
 #' @return List with validation results and warnings
 #' @export
@@ -202,27 +202,40 @@ validate_input_data <- function(bulk_counts, sc_counts_list) {
   }
   
   # Check scRNA-seq
-  if (!is.list(sc_counts_list) || is.null(names(sc_counts_list))) {
-    issues <- c(issues, "sc_counts_list must be a named list")
-  }
+  flag <- is.list(sc_counts_list) &&  length(sc_counts_list) > 0 &&
+          all(vapply(sc_counts_list, function(x) {
+                is.list(x) && length(x) > 0 && all(vapply(x, is.matrix, logical(1))) }, logical(1)))
+
+  if (!flag) {
+      issues <- c(issues, paste0( "sc_counts_list must be a list of lists of matrices. ",
+                                  "The first-level list should contain one or more reference sets, ",
+                                  "and each second-level list should contain a count matrix for each cell type."
+                                 ))}
   
-  for (ct in names(sc_counts_list)) {
-    mat <- sc_counts_list[[ct]]
-    if (!is.matrix(mat) && !is.data.frame(mat)) {
-      issues <- c(issues, paste0("sc_counts_list[[", ct, "]] must be matrix or data.frame"))
-    }
-    if (any(is.na(mat))) {
-      issues <- c(issues, paste0("sc_counts_list[[", ct, "]] contains NA values"))
-    }
-    if (any(mat < 0)) {
-      issues <- c(issues, paste0("sc_counts_list[[", ct, "]] contains negative values"))
-    }
+  for(ii in 1:length(sc_counts_list)){
+    sc_counts <- sc_counts_list[[ii]]
+    flag <- !is.null(names(sc_counts)) && all(nzchar(names(sc_counts))) && !anyDuplicated(names(sc_counts))
+    if(!flag){ issues <- c(issues, paste0("Reference set ", ii, "should be a named list" ))}
+    for (ct in names(sc_counts)) {
+        mat <- sc_counts[[ct]]
+        if (!is.matrix(mat) && !is.data.frame(mat)) {
+          issues <- c(issues, paste0("Reference set ", ii, " sc_counts[[", ct, "]] must be matrix"))
+        }
+        if (any(is.na(mat))) {
+          issues <- c(issues, paste0("Reference set ", ii, " sc_counts[[", ct, "]] contains NA values"))
+        }
+        if (any(mat < 0)) {
+          issues <- c(issues, paste0("Reference set ", ii, " sc_counts[[", ct, "]] contains negative values"))
+        }
+     }
   }
-  
   # Check overlap
   bulk_genes <- colnames(bulk_counts)
-  sc_genes <- unique(unlist(lapply(sc_counts_list, colnames)))
-  overlap <- intersect(bulk_genes, sc_genes)
+  sc_genes   <- list()
+  for(ii in 1:length(sc_counts_list)){
+      sc_genes[[ii]] <- unique(unlist(lapply(sc_counts_list[[ii]], colnames)))
+  }
+  overlap    <- intersect(bulk_genes, Reduce("intersect", sc_genes))
   
   if (length(overlap) < 100) {
     issues <- c(issues, sprintf("Only %d genes overlap between bulk and scRNA-seq (need >100)", 
@@ -240,9 +253,12 @@ validate_input_data <- function(bulk_counts, sc_counts_list) {
   message("Input data validation passed!")
   message("  Bulk samples: ", nrow(bulk_counts))
   message("  Bulk genes: ", ncol(bulk_counts))
-  message("  Cell types: ", length(sc_counts_list))
-  message("  Total scRNA-seq cells: ", sum(sapply(sc_counts_list, nrow)))
-  message("  Gene overlap: ", length(overlap))
+  message("  Number of reference set: ", length(sc_counts_list))
+  message("  Cell types: ", length(sc_counts_list[[1]]))
+  for(ii in 1:length(sc_counts_list)){
+      message(paste0("  Total scRNA-seq cells in reference set", ii, ": "), sum(sapply(sc_counts_list[[ii]], nrow)))
+  }
+  message(paste0("  Gene overlap between bulk and every reference set: "), length(overlap))
   
   return(list(valid = TRUE, issues = NULL))
 }
