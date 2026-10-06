@@ -371,7 +371,7 @@ preprocess_reference <- function(sc_counts_list,
             for(ss in celltypes){
                 mm             <- ll.sc[[ss]][, genes, drop=F]
                 ll.sort[[ss]]  <- colMeans(mm)
-                quant          <- quantile(ll.sort[[ss]], qq)
+                quant          <- quantile(ll.sort[[ss]], quantile_norm)
                 ll.sort[[ss]]  <- ll.sort[[ss]]/quant
                 quant.sc       <- quantile(ll.sort[[ss]], 0.75)
                 s.factor       <- quant.bk/quant.sc
