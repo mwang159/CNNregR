@@ -417,10 +417,11 @@ preprocess_reference <- function(sc_counts_list,
   set.seed(seed)
   if( cluster=="k-mean" && length(N.cl) == 1 && !is.na(N.cl) && N.cl > 0){
       message("Performing k-means clustering...")
-      cl_list <- list()
+      cl_list    <- list()
+      sc_counts  <- sc_counts_list[[1]]
       for (ct in celltypes) {
         message("  Clustering ", ct, "...")
-        sc_matrix <- sc_counts_list[[ct]][, genes]
+        sc_matrix <- sc_counts[[ct]][, genes]
         cl_list[[ct]] <- kmeans(log2(1 + sc_matrix), centers = n_clusters, nstart = 10)
       }
   
@@ -432,7 +433,7 @@ preprocess_reference <- function(sc_counts_list,
         for (ct in celltypes) {
           # Get cells in cluster i
           cluster_idx <- which(cl_list[[ct]]$cluster == ii)
-          cluster_expr <- sc_counts_list[[ct]][cluster_idx, genes, drop = FALSE]
+          cluster_expr <- sc_counts[[ct]][cluster_idx, genes, drop = FALSE]
       
           # Average expression in cluster
           mean_expr <- colMeans(cluster_expr)
@@ -483,7 +484,7 @@ preprocess_reference <- function(sc_counts_list,
   
   # Create data.frame
   expr_matrix <- do.call(rbind, ll.ref)
-  df_out <- data.frame(Sample = paste0("sim_", 1:length(ll.ref), expr_matrix, check.names = FALSE)
+  df_out <- data.frame(Sample = paste0("sim_", 1:length(ll.ref)), expr_matrix, check.names = FALSE)
   
   # Column names: Gene_CellType
   gene_cell <- as.vector(sapply(genes, function(g) {
