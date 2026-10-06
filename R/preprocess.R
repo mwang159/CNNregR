@@ -483,7 +483,7 @@ preprocess_reference <- function(sc_counts_list,
   
   # Create data.frame
   expr_matrix <- do.call(rbind, ll.ref)
-  df_out <- data.frame(Sample = paste0("sim_", 1:n_clusters), expr_matrix, check.names = FALSE)
+  df_out <- data.frame(Sample = paste0("sim_", 1:length(ll.ref), expr_matrix, check.names = FALSE)
   
   # Column names: Gene_CellType
   gene_cell <- as.vector(sapply(genes, function(g) {
