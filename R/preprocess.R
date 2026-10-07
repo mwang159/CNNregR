@@ -281,7 +281,7 @@ preprocess_bulk <- function(bulk_counts,
 
   # normalized expression
   effective_lib_size <- tmm$samples$lib.size * tmm$samples$norm.factors
-  bulk_norm  <- sweep(bulk_sub, 1, effective_lib_size, "/") * 1e6
+  bulk_norm  <- sweep(bulk_counts, 1, effective_lib_size, "/") * 1e6
 
   # Subset genes
   expr <- bulk_norm[, genes] + 0.00001
