@@ -279,6 +279,10 @@ preprocess_bulk <- function(bulk_counts,
   tmm <- edgeR::DGEList(t(bulk_counts))
   tmm <- edgeR::calcNormFactors(tmm)
 
+  # normalized expression
+  effective_lib_size <- tmm$samples$lib.size * tmm$samples$norm.factors
+  bulk_norm  <- sweep(bulk_sub, 1, effective_lib_size, "/") * 1e6
+
   # Subset genes
   expr <- bulk_norm[, genes] + 0.00001
   
