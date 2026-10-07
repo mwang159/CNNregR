@@ -165,7 +165,7 @@ select_genes <- function(bulk_counts,
   ]
   
   message("After expression/CV filters: ", length(genes_bulk), " genes")
-  
+
   # Step 5: Filter scRNA-seq genes
   celltypes <- names(sc_counts_list[[1]])
   genes     <- colnames(sc_counts_list[[1]][[1]])
@@ -187,35 +187,38 @@ select_genes <- function(bulk_counts,
       genes    <- intersect(genes, gene_sc)
   }
   # Intersect bulk and scRNA genes
-  genes <- intersect(genes, colnames(genes_bulk))
-  
+  genes <- intersect(genes, genes_bulk)
+
 
   
   message("After scRNA-seq filtering: ", length(genes), " genes")
-  
+
+
   # Step 6: Calculate discrimination score from scRNA-seq
   gene_sel <- list(length(sc_counts_list))
   for(ii in 1:length(sc_counts_list)){
+      sc_counts <- sc_counts_list[[ii]]
       sum_celltype <- lapply(celltypes, function(ct) {
-        colSums(sc_counts_list[[ct]][, genes])
+        colSums(sc_counts[[ct]][, genes])
       })
-  
+
       norm_celltype <- lapply(sum_celltype, function(x) {
         log2(1 + 1e6 * x / sum(x))
       })
-  
+
       expr_matrix <- do.call(rbind, norm_celltype)
-  
+
       dis_score <- apply(expr_matrix, 2, function(x) {
         var(x)
       })
-  
+
       # Keep top variance genes
       threshold <- quantile(dis_score, ref_var_quantile)
       gene_sel[[ii]] <- genes[dis_score >= threshold]
   }
   genes <- Reduce("union", gene_sel)
-  
+
+
   # Gene statistics
   gene_stats <- data.frame(
     gene = genes,
