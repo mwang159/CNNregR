@@ -374,7 +374,6 @@ preprocess_reference <- function(sc_counts_list,
   
   ## to prepare the reference by input sn/scRNAseq datasets
   if(cluster == "byRef"){
-        N.cl <- length(sc_counts_list)
         sim_expr <- list()
         for(ii in 1:length(sc_counts_list)){
             sc_counts    <- sc_counts_list[[ii]]
@@ -422,7 +421,7 @@ preprocess_reference <- function(sc_counts_list,
   }
   # K-means clustering for each cell type
   set.seed(seed)
-  if( cluster=="k-mean" && length(N.cl) == 1 && !is.na(N.cl) && N.cl > 0){
+  if( cluster=="k-mean" && length(n_clusters) == 1 && !is.na(n_clusters) && n_clusters > 0){
       message("Performing k-means clustering...")
       cl_list    <- list()
       sc_counts  <- sc_counts_list[[1]]
