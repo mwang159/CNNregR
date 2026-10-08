@@ -42,7 +42,7 @@
 #' # Human genes with biotype filtering
 #' result <- select_genes(
 #'   bulk_counts = bulk_data,
-#'   sc_counts_list = list(Astro = astro_counts, Oligo = oligo_counts),
+#'   sc_counts_list = list(list(Astro = astro_counts, Oligo = oligo_counts)),
 #'   filter_biotype = TRUE,
 #'   organism = "hsapiens"
 #' )
@@ -88,7 +88,6 @@ select_genes <- function(bulk_counts,
   tmm <- edgeR::DGEList(t(bulk_counts))
   tmm <- edgeR::calcNormFactors(tmm)
 
-  
   # Step 2: Filter bulk genes by annotation
   genes_bulk <- colnames(bulk_counts)
   anno_result <- NULL
@@ -248,7 +247,7 @@ select_genes <- function(bulk_counts,
 #' Preprocess Bulk RNA-seq Data (edgeR TMM)
 #'
 #' @description
-#' Normalizes bulk RNA-seq data using TMM size factors and quantile normalization
+#' Normalizes bulk RNA-seq data using TMM method and scales by quantile
 #'
 #' @param bulk_counts Matrix or data.frame of bulk RNA-seq counts (samples × genes)
 #' @param genes Character vector of genes to include
@@ -323,21 +322,20 @@ preprocess_bulk <- function(bulk_counts,
 #' this function suggests the optimal number of clusters for K-means clustering.
 #'
 #' @description
-#' Creates reference Cell-type Specific Expression (CSE) profiles using
-#' k-means clustering. Generates reference samples by clustering cells within
-#' each cell type and matching expression scales to bulk samples.
+#' Perform k-mean clustering for k from 1 to 6 for each cell type, obtain size factors and 
+#' cell numbers of clusters from each k-mean clusterings, and make recommendations of optimal k
+#' based on size factors and cell numbers. 
 #'
 #' @param sc_counts Named list of scRNA-seq count matrices per cell type (cells × genes)
 #' @param bulk_df Preprocessed bulk data.frame (output from preprocess_bulk)
 #' @param genes Character vector of genes to include. Should be bulk_df$Gene from preprocess_bulk output
 #'   to ensure genes match between bulk and reference after final CV filtering.
-#' @param cluster should use the reference ("byRef") or divide cells by k-mean clustering ("k-mean")
-#' @param n_clusters if we do k-mean clustering, the number of clusters per cell type (default: 1)
 #' @param quantile_norm Quantile for normalization (default: 0.99)
 #' @param seed Random seed for k-means (default: 1235)
 #' @param output_file Path to save CSV file (optional)
 #'
-#' @return Data.frame with format: Sample, Gene1_CellType1, Gene1_CellType2, ...
+#' @return a list containing suggested k, size factors for clusters from each k-mean clustering
+#' and cell numbers for clusters from each k-mean clustering
 #' @export
 #'
 #' @examples
