@@ -318,6 +318,117 @@ preprocess_bulk <- function(bulk_counts,
 }
 
 
+
+#' When working with a single reference dataset and aiming to generate multiple references,
+#' this function suggests the optimal number of clusters for K-means clustering.
+#'
+#' @description
+#' Creates reference Cell-type Specific Expression (CSE) profiles using
+#' k-means clustering. Generates reference samples by clustering cells within
+#' each cell type and matching expression scales to bulk samples.
+#'
+#' @param sc_counts Named list of scRNA-seq count matrices per cell type (cells × genes)
+#' @param bulk_df Preprocessed bulk data.frame (output from preprocess_bulk)
+#' @param genes Character vector of genes to include. Should be bulk_df$Gene from preprocess_bulk output
+#'   to ensure genes match between bulk and reference after final CV filtering.
+#' @param cluster should use the reference ("byRef") or divide cells by k-mean clustering ("k-mean")
+#' @param n_clusters if we do k-mean clustering, the number of clusters per cell type (default: 1)
+#' @param quantile_norm Quantile for normalization (default: 0.99)
+#' @param seed Random seed for k-means (default: 1235)
+#' @param output_file Path to save CSV file (optional)
+#'
+#' @return Data.frame with format: Sample, Gene1_CellType1, Gene1_CellType2, ...
+#' @export
+#'
+#' @examples
+estimateClusterNumber  <- function(sc_counts,
+                                  bulk_df,
+                                  genes,
+                                  quantile_norm = 0.99,
+                                  seed = 1235){
+    ## check number of clusters from 1 to 6
+    N_test      <- 1:6
+    celltypes   <- names(sc_counts)
+
+
+    ## Calculate bulk quantiles for scaling
+    bulk_matrix    <- as.matrix(bulk_df[, 2:ncol(bulk_df)])
+    quant_bulk_75  <- quantile(apply(bulk_matrix, 2, function(x) {quantile(x, 0.75)}), 0.5)
+    quant_bulk_max <- quantile(apply(bulk_matrix, 2, function(x) {quantile(x, 1)}), 0.5)
+
+    message("Bulk quantiles: 75th=", round(quant_bulk_75, 3), ", max=", round(quant_bulk_max, 3))
+
+    sf_list    <- list()  ## to keep size factor for each cluster 
+    num_list   <- list()  ## to keep number of cells in each cluster
+    for(k in N_test){ ## test 1:N.test clusters
+       cl_list  <- vector("list", length(celltypes))
+       ## for this k-mean clustering, keep size factor and number of cells of each cluster
+       mm_sf    <- matrix(NA_real_, nrow=k, ncol=length(celltypes), dimnames=list(cluster=as.character(1:k), celltypes=celltypes))
+       mm_num   <- matrix(NA_real_, nrow=k, ncol=length(celltypes), dimnames=list(cluster=as.character(1:k), celltypes=celltypes))
+       set.seed(seed)
+       for (ct in celltypes) {
+          message("  Clustering ", ct, "...")
+          sc_matrix <- sc_counts[[ct]][, genes]
+          cl_list[[ct]] <- kmeans(log2(1+sc_matrix), centers=k, nstart = 10)
+       }
+       for(ii in 1:k){
+           for(ct in celltypes){
+               cluster_idx  <- which(cl_list[[ct]]$cluster == ii)
+               cluster_expr <- sc_counts[[ct]][cluster_idx, genes, drop = FALSE]
+
+               # Average expression in cluster
+               mean_expr    <- colMeans(cluster_expr)
+               # Normalize by quantile
+               quant        <- quantile(mean_expr, quantile_norm)
+               mean_expr_norm <- mean_expr / quant
+
+               # Calculate scaling factor to match bulk
+               quant_sc_75 <- quantile(mean_expr_norm, 0.75)
+               s_factor <- quant_bulk_75 / quant_sc_75
+               mm_sf[as.character(ii),  ct]   <- s_factor
+               mm_num[as.character(ii), ct]  <- length(cluster_idx)
+           }
+       }
+       sf_list[[as.character(k)]]  <- mm_sf
+       num_list[[as.character(k)]] <- mm_num
+    }                                                    
+
+
+    ## recommend k by size factor
+    ## for each cell type, if there is a k such that k-mean clustering results in some cluster 
+    ## that has size factor <0.2 or >5, keep k+1
+    ## if no such k, k_bySizeFactor will have 1
+    ind = c()
+    for(ct in celltypes){
+        flag = 100
+        for(k in N_test){
+            vv  <- sf_list[[as.character(k)]][,ct]
+            if(length(which(vv>5| vv<0.2))>0 & k<flag){ flag=k+1; }
+        }
+        ind <- c(ind, flag)
+    }
+    ind[which(ind==100)] <- 1
+    k_bySizeFactor <- max(ind)
+
+    ## recommend k by number of cells
+    ## for each cell type, if there is a k such that k-mean clustering results in cell number < 100 in the lagest cluster,
+    ## keep k-1
+    ind = c()
+    for(ct in celltypes){
+        flag = 100
+        for(k in N_test){
+            vv  <- num_list[[as.character(k)]][,ct]
+            if(max(vv)<100 & k<flag){ flag=k-1 }
+        }
+        ind <- c(ind, flag)
+    }
+    ind[which(ind<1)] <- 1
+    k_byCellNum <- ifelse(min(ind)==100, 5, min(ind))
+    return(list(k=min(k_bySizeFactor, k_byCellNum), sizefactor=sf_list, numCell=num_list))
+}
+
+
+  
 #' Preprocess Reference scRNA-seq Data (K-means Clustering)
 #'
 #' @description
