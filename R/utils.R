@@ -181,7 +181,9 @@ read_cnnreg_proportions <- function(file, rename_samples = NULL) {
 #' Checks that input data meets CNNreg requirements
 #'
 #' @param bulk_counts Bulk RNA-seq count matrix
-#' @param sc_counts_list sc_counts_list List of List of scRNA-seq count matrices, each list is a reference set
+#' @param sc_counts_list List of List of scRNA-seq count matrices. 
+#' The first-level list should contain one or more reference sets
+#' and each second-level list should contain a count matrix for each cell type.
 #'
 #' @return List with validation results and warnings
 #' @export
