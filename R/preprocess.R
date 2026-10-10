@@ -495,7 +495,7 @@ preprocess_reference <- function(sc_counts_list,
                 # Calculate scaling factor to match bulk
                 quant_sc_75 <- quantile(mean_expr_norm, 0.75)
                 s_factor <- quant_bulk_75 / quant_sc_75
-                print(s.factor)
+                print(s_factor)
               
                 # Constrain scaling factor
                 s_factor <- min(s_factor, 5)
