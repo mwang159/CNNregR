@@ -22,6 +22,7 @@
 #' \itemize{
 #'   \item \code{\link{select_genes}}: Select discriminative genes with edgeR TMM
 #'   \item \code{\link{preprocess_bulk}}: Format bulk RNA-seq data
+#'   \item \code{\link{estimate_clusterNumber}}: Suggest the k for k-means clustering
 #'   \item \code{\link{preprocess_reference}}: Generate reference CSE profiles via k-means
 #' }
 #' 
