@@ -332,14 +332,13 @@ preprocess_bulk <- function(bulk_counts,
 #'   to ensure genes match between bulk and reference after final CV filtering.
 #' @param quantile_norm Quantile for normalization (default: 0.99)
 #' @param seed Random seed for k-means (default: 1235)
-#' @param output_file Path to save CSV file (optional)
 #'
 #' @return a list containing suggested k, size factors for clusters from each k-means clustering
 #' and cell numbers for clusters from each k-means clustering
 #' @export
 #'
 #' @examples
-estimateClusterNumber  <- function(sc_counts,
+estimate_clusterNumber  <- function(sc_counts,
                                   bulk_df,
                                   genes,
                                   quantile_norm = 0.99,
