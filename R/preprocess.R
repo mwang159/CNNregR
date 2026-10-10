@@ -132,9 +132,9 @@ select_genes <- function(bulk_counts,
   
   # Exclude MALAT1, MT genes, ribosomal genes
   genes_bulk <- setdiff(genes_bulk, exclude_genes)
-  genes_bulk <- genes_bulk[!grepl("^MT-|^MT|^mt-|^RPL|^RPS|^Rpl|^Rps", genes_bulk)]
+  genes_bulk <- genes_bulk[!grepl("^MT-|^MT|^mt-", genes_bulk)]
   
-  message("After MT/ribosomal exclusion: ", length(genes_bulk), " genes")
+  message("After MT exclusion: ", length(genes_bulk), " genes")
   
   bulk_sub <- bulk_counts[, genes_bulk]
   
