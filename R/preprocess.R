@@ -319,11 +319,11 @@ preprocess_bulk <- function(bulk_counts,
 
 
 #' When working with a single reference dataset and aiming to generate multiple references,
-#' this function suggests the optimal number of clusters for K-means clustering.
+#' this function suggests the optimal number of clusters for k-means clustering.
 #'
 #' @description
-#' Perform k-mean clustering for k from 1 to 6 for each cell type, obtain size factors and 
-#' cell numbers of clusters from each k-mean clusterings, and make recommendations of optimal k
+#' Perform k-means clustering for k from 1 to 6 for each cell type, obtain size factors and 
+#' cell numbers of clusters from each k-means clusterings, and make recommendations of optimal k
 #' based on size factors and cell numbers. 
 #'
 #' @param sc_counts Named list of scRNA-seq count matrices per cell type (cells × genes)
@@ -334,8 +334,8 @@ preprocess_bulk <- function(bulk_counts,
 #' @param seed Random seed for k-means (default: 1235)
 #' @param output_file Path to save CSV file (optional)
 #'
-#' @return a list containing suggested k, size factors for clusters from each k-mean clustering
-#' and cell numbers for clusters from each k-mean clustering
+#' @return a list containing suggested k, size factors for clusters from each k-means clustering
+#' and cell numbers for clusters from each k-means clustering
 #' @export
 #'
 #' @examples
@@ -360,7 +360,7 @@ estimateClusterNumber  <- function(sc_counts,
     num_list   <- list()  ## to keep number of cells in each cluster
     for(k in N_test){ ## test 1:N.test clusters
        cl_list  <- vector("list", length(celltypes))
-       ## for this k-mean clustering, keep size factor and number of cells of each cluster
+       ## for this k-means clustering, keep size factor and number of cells of each cluster
        mm_sf    <- matrix(NA_real_, nrow=k, ncol=length(celltypes), dimnames=list(cluster=as.character(1:k), celltypes=celltypes))
        mm_num   <- matrix(NA_real_, nrow=k, ncol=length(celltypes), dimnames=list(cluster=as.character(1:k), celltypes=celltypes))
        set.seed(seed)
@@ -393,7 +393,7 @@ estimateClusterNumber  <- function(sc_counts,
 
 
     ## recommend k by size factor
-    ## for each cell type, if there is a k such that k-mean clustering results in some cluster 
+    ## for each cell type, if there is a k such that k-means clustering results in some cluster 
     ## that has size factor <0.2 or >5, keep k+1
     ## if no such k, k_bySizeFactor will have 1
     ind = c()
@@ -409,7 +409,7 @@ estimateClusterNumber  <- function(sc_counts,
     k_bySizeFactor <- max(ind)
 
     ## recommend k by number of cells
-    ## for each cell type, if there is a k such that k-mean clustering results in cell number < 100 in the lagest cluster,
+    ## for each cell type, if there is a k such that k-means clustering results in cell number < 100 in the lagest cluster,
     ## keep k-1
     ind = c()
     for(ct in celltypes){
@@ -438,8 +438,8 @@ estimateClusterNumber  <- function(sc_counts,
 #' @param bulk_df Preprocessed bulk data.frame (output from preprocess_bulk)
 #' @param genes Character vector of genes to include. Should be bulk_df$Gene from preprocess_bulk output
 #'   to ensure genes match between bulk and reference after final CV filtering.
-#' @param cluster should use the reference ("byRef") or divide cells by k-mean clustering ("k-mean")
-#' @param n_clusters if we do k-mean clustering, the number of clusters per cell type (default: 1)
+#' @param cluster should use the reference ("byRef") or divide cells by k-means clustering ("k-means")
+#' @param n_clusters if we do k-means clustering, the number of clusters per cell type (default: 1)
 #' @param quantile_norm Quantile for normalization (default: 0.99)
 #' @param seed Random seed for k-means (default: 1235)
 #' @param output_file Path to save CSV file (optional)
@@ -530,7 +530,7 @@ preprocess_reference <- function(sc_counts_list,
   }
   # K-means clustering for each cell type
   set.seed(seed)
-  if( cluster=="k-mean" && length(n_clusters) == 1 && !is.na(n_clusters) && n_clusters > 0){
+  if( cluster=="k-means" && length(n_clusters) == 1 && !is.na(n_clusters) && n_clusters > 0){
       message("Performing k-means clustering...")
       cl_list    <- list()
       sc_counts  <- sc_counts_list[[1]]
