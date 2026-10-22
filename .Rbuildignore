@@ -1,6 +1,13 @@
+^renv$
+^renv\.lock$
 .Rbuildignore
 ^.*\.Rproj$
 ^\.Rproj\.user$
 ^LICENSE\.md$
 ^README\.Rmd$
 ^\.github$
+^\.cache
+^\.git
+^\.Renviron
+^\.Rprofile
+^\.gitignore

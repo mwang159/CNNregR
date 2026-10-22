@@ -26,7 +26,7 @@ select_genes(
 \arguments{
 \item{bulk_counts}{Matrix or data.frame of bulk RNA-seq counts (samples × genes)}
 
-\item{sc_counts_list}{Named list of scRNA-seq count matrices per cell type (cells × genes)}
+\item{sc_counts_list}{List of reference sources, where each source is a named list of scRNA-seq count matrices per cell type (cells × genes)}
 
 \item{filter_biotype}{Logical, whether to filter by gene biotype (default: TRUE)}
 
@@ -63,7 +63,6 @@ If NULL (default), all chromosomes are included. Only used if gene_annotation ha
 \value{
 List with:
   \item{genes}{Character vector of selected gene names}
-  \item{size_factors}{TMM size factors for bulk samples}
   \item{gene_stats}{Data.frame with gene statistics}
   \item{gene_annotation}{Data.frame with gene annotations (if queried)}
 }
@@ -78,28 +77,20 @@ edgeR TMM normalization and coefficient of variation filtering:
 }
 \examples{
 \dontrun{
-# Human genes with biotype filtering
-result <- select_genes(
-  bulk_counts = bulk_data,
-  sc_counts_list = list(Astro = astro_counts, Oligo = oligo_counts),
-  filter_biotype = TRUE,
-  organism = "hsapiens"
-)
+data("pseudoBulk_GBM", package = "CNNregR")
+data("ref_GBM", package = "CNNregR")
+data("gene_annotation", package = "CNNregR")
 
-# Skip biotype filtering (any organism)
-result <- select_genes(
-  bulk_counts = bulk_data,
-  sc_counts_list = sc_list,
-  filter_biotype = FALSE
-)
+bulk_counts <- pseudoBulk_GBM$pseudoBulk
+sc_counts_list <- list(ref_GBM)
 
-# Custom biotypes for mouse
+# Human genes with packaged annotations
 result <- select_genes(
-  bulk_counts = bulk_data,
-  sc_counts_list = sc_list,
+  bulk_counts = bulk_counts,
+  sc_counts_list = sc_counts_list,
+  gene_annotation = gene_annotation,
+  chromosomes = paste0("chr", 1:22),
   filter_biotype = TRUE,
-  gene_biotypes = c("protein_coding", "lincRNA"),
-  organism = "mmusculus"
 )
 }
 }

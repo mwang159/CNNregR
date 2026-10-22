@@ -9,7 +9,9 @@ validate_input_data(bulk_counts, sc_counts_list)
 \arguments{
 \item{bulk_counts}{Bulk RNA-seq count matrix}
 
-\item{sc_counts_list}{List of scRNA-seq count matrices}
+\item{sc_counts_list}{List of List of scRNA-seq count matrices. 
+The first-level list should contain one or more reference sets
+and each second-level list should contain a count matrix for each cell type.}
 }
 \value{
 List with validation results and warnings

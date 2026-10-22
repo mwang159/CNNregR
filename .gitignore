@@ -1,0 +1,5 @@
+.Renviron
+.Rbuildignore
+.Rprofile
+.cache/
+renv/

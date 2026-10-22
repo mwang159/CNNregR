@@ -10,7 +10,7 @@
 #' 5. Variance-based discrimination from scRNA-seq
 #'
 #' @param bulk_counts Matrix or data.frame of bulk RNA-seq counts (samples × genes)
-#' @param sc_counts_list Named list of scRNA-seq count matrices per cell type (cells × genes)
+#' @param sc_counts_list List of reference sources, where each source is a named list of scRNA-seq count matrices per cell type (cells × genes)
 #' @param filter_biotype Logical, whether to filter by gene biotype (default: TRUE)
 #' @param gene_biotypes Gene biotypes to include if filter_biotype=TRUE 
 #'   (default: c("protein_coding", "lincRNA", "processed_pseudogene"))
@@ -39,28 +39,20 @@
 #'
 #' @examples
 #' \dontrun{
-#' # Human genes with biotype filtering
+#' data("pseudoBulk_GBM", package = "CNNregR")
+#' data("ref_GBM", package = "CNNregR")
+#' data("gene_annotation", package = "CNNregR")
+#'
+#' bulk_counts <- pseudoBulk_GBM$pseudoBulk
+#' sc_counts_list <- list(ref_GBM)
+#'
+#' # Human genes with packaged annotations
 #' result <- select_genes(
-#'   bulk_counts = bulk_data,
-#'   sc_counts_list = list(list(Astro = astro_counts, Oligo = oligo_counts)),
+#'   bulk_counts = bulk_counts,
+#'   sc_counts_list = sc_counts_list,
+#'   gene_annotation = gene_annotation,
+#'   chromosomes = paste0("chr", 1:22),
 #'   filter_biotype = TRUE,
-#'   organism = "hsapiens"
-#' )
-#' 
-#' # Skip biotype filtering (any organism)
-#' result <- select_genes(
-#'   bulk_counts = bulk_data,
-#'   sc_counts_list = sc_list,
-#'   filter_biotype = FALSE
-#' )
-#' 
-#' # Custom biotypes for mouse
-#' result <- select_genes(
-#'   bulk_counts = bulk_data,
-#'   sc_counts_list = sc_list,
-#'   filter_biotype = TRUE,
-#'   gene_biotypes = c("protein_coding", "lincRNA"),
-#'   organism = "mmusculus"
 #' )
 #' }
 #' @importFrom magrittr %>%
@@ -260,9 +252,18 @@ select_genes <- function(bulk_counts,
 #'
 #' @examples
 #' \dontrun{
-#' result <- select_genes(bulk_data, sc_list)
+#' data("pseudoBulk_GBM", package = "CNNregR")
+#' data("ref_GBM", package = "CNNregR")
+#' bulk_counts <- pseudoBulk_GBM$pseudoBulk
+#' sc_counts_list <- list(ref_GBM)
+#'
+#' result <- select_genes(
+#'   bulk_counts = bulk_counts,
+#'   sc_counts_list = sc_counts_list,
+#'   filter_biotype = FALSE
+#' )
 #' bulk_df <- preprocess_bulk(
-#'   bulk_counts = bulk_data,
+#'   bulk_counts = bulk_counts,
 #'   genes = result$genes,
 #'   output_file = "bulk_processed.csv"
 #' )
@@ -338,6 +339,31 @@ preprocess_bulk <- function(bulk_counts,
 #' @export
 #'
 #' @examples
+#' \dontrun{
+#' data("pseudoBulk_GBM", package = "CNNregR")
+#' data("ref_GBM", package = "CNNregR")
+#'
+#' bulk_counts <- pseudoBulk_GBM$pseudoBulk
+#' sc_counts_list <- list(ref_GBM)
+#'
+#' gene_result <- select_genes(
+#'   bulk_counts = bulk_counts,
+#'   sc_counts_list = sc_counts_list,
+#'   filter_biotype = FALSE
+#' )
+#' bulk_df <- preprocess_bulk(
+#'   bulk_counts = bulk_counts,
+#'   genes = gene_result$genes
+#' )
+#'
+#' cluster_result <- estimate_clusterNumber(
+#'   sc_counts = sc_counts_list[[1]],
+#'   bulk_df = bulk_df,
+#'   genes = bulk_df$Gene,
+#'   seed = 1235
+#' )
+#' cluster_result$k
+#' }
 estimate_clusterNumber  <- function(sc_counts,
                                   bulk_df,
                                   genes,
@@ -433,7 +459,7 @@ estimate_clusterNumber  <- function(sc_counts,
 #' k-means clustering. Generates reference samples by clustering cells within
 #' each cell type and matching expression scales to bulk samples.
 #'
-#' @param sc_counts_list Named list of scRNA-seq count matrices per cell type (cells × genes)
+#' @param sc_counts_list List of reference sources, where each source is a named list of scRNA-seq count matrices per cell type (cells × genes)
 #' @param bulk_df Preprocessed bulk data.frame (output from preprocess_bulk)
 #' @param genes Character vector of genes to include. Should be bulk_df$Gene from preprocess_bulk output
 #'   to ensure genes match between bulk and reference after final CV filtering.
@@ -448,13 +474,17 @@ estimate_clusterNumber  <- function(sc_counts,
 #'
 #' @examples
 #' \dontrun{
-#' # Complete workflow
-#' gene_result <- select_genes(bulk_data, sc_list)
-#' bulk_df <- preprocess_bulk(bulk_data, gene_result$genes, gene_result$size_factors)
+#' data("pseudoBulk_GBM", package = "CNNregR")
+#' data("ref_GBM", package = "CNNregR")
+#' bulk_counts <- pseudoBulk_GBM$pseudoBulk
+#' sc_counts_list <- list(ref_GBM)
+#'
+#' gene_result <- select_genes(bulk_counts, sc_counts_list, filter_biotype = FALSE)
+#' bulk_df <- preprocess_bulk(bulk_counts, gene_result$genes)
 #' 
 #' # Use genes from bulk_df output (after final CV filtering)
 #' ref_df <- preprocess_reference(
-#'   sc_counts_list = sc_list,
+#'   sc_counts_list = sc_counts_list,
 #'   bulk_df = bulk_df,
 #'   genes = bulk_df$Gene,
 #'   n_clusters = 5,

@@ -39,35 +39,38 @@ devtools::install_github("mwang159/CNNregR")
 
 ## Quick Start
 
+The package includes a small GBM example dataset for trying the workflow. The packaged objects are `pseudoBulk_GBM`, `ref_GBM`,
+and `gene_annotation`.
+
 ### Complete Workflow (Recommended)
 
 ```r
 library(CNNregR)
 
-# Check CNNreg installation
-check_cnnreg_install()
+# Load the included example data
+data("pseudoBulk_GBM", package = "CNNregR")
+data("ref_GBM", package = "CNNregR")
+data("gene_annotation", package = "CNNregR")
 
-# Wrapper function for the whole process
+bulk_counts <- pseudoBulk_GBM$pseudoBulk
+sc_counts_list <- list(ref_GBM)
+
+# Run preprocessing and deconvolution
 result <- deconvolve(
-  bulk_counts = my_bulk_data,
-  sc_counts_list = list(
-    Astrocyte = astro_counts,
-    Oligodendrocyte = oligo_counts,
-    Neuron = neuron_counts,
-    Microglia = micro_counts
-  ),
+  bulk_counts = bulk_counts,
+  sc_counts_list = sc_counts_list,
   output_dir = "results/deconvolution/",
   prefix = "deconv",
   epochs = 10000,
   n_clusters = 5,
   filter_biotype = TRUE,
-  organism = "hsapiens"
+  gene_annotation = gene_annotation,
+  chromosomes = paste0("chr", 1:22)
 )
 
 # View results
-print(result$genes)           # Selected marker genes
-print(result$size_factors)    # TMM normalization factors
-head(result$proportions)      # Predicted cell proportions
+length(result$genes)
+head(result$proportions)
 ```
 
 ### Step-by-Step Workflow
@@ -75,48 +78,62 @@ head(result$proportions)      # Predicted cell proportions
 ```r
 library(CNNregR)
 
-# Step 1: Get gene annotations (optional, auto-queried if needed)
-anno <- get_gene_annotation(
-  genes = colnames(bulk_data),
-  organism = "hsapiens"
-)
+# Load the included GBM example data
+data("pseudoBulk_GBM", package = "CNNregR")
+data("ref_GBM", package = "CNNregR")
+data("gene_annotation", package = "CNNregR")
 
-# Step 2: Select genes with TMM normalization
+bulk_counts <- pseudoBulk_GBM$pseudoBulk
+sc_counts_list <- list(ref_GBM)
+
+# Step 1: Validate the input data
+validate_input_data(bulk_counts, sc_counts_list)
+
+# Step 2: Select genes with TMM normalization and local annotations
 gene_result <- select_genes(
-  bulk_counts = bulk_data,
-  sc_counts_list = sc_list,
+  bulk_counts = bulk_counts,
+  sc_counts_list = sc_counts_list,
+  gene_annotation = gene_annotation,
   filter_biotype = TRUE,
   gene_biotypes = c("protein_coding", "lincRNA", "processed_pseudogene"),
   organism = "hsapiens",
   bulk_min_median_quantile = 0.1,
   bulk_max_median_quantile = 0.999,
   bulk_min_cv_quantile = 0.25,
-  ref_var_quantile = 0.5
+  ref_var_quantile = 0.5,
+  chromosomes = paste0("chr", 1:22)
 )
 
-# Step 3: Preprocess bulk RNA-seq with TMM
+# Step 3: Preprocess bulk RNA-seq
 bulk_df <- preprocess_bulk(
-  bulk_counts = bulk_data,
+  bulk_counts = bulk_counts,
   genes = gene_result$genes,
-  size_factors = gene_result$size_factors,
   output_file = "bulk_processed.csv"
 )
 
-# Step 4: Generate reference CSE via k-means
-ref_df <- preprocess_reference(
-  sc_counts_list = sc_list,
+# Step 4: Estimate the number of reference clusters
+k_est <- estimate_clusterNumber(
+  sc_counts = sc_counts_list[[1]],
   bulk_df = bulk_df,
   genes = bulk_df$Gene,
-  n_clusters = 5,
+  seed = 1235
+)
+
+# Step 5: Generate reference CSE profiles via k-means
+ref_df <- preprocess_reference(
+  sc_counts_list = sc_counts_list,
+  bulk_df = bulk_df,
+  genes = bulk_df$Gene,
+  n_clusters = k_est$k,
   output_file = "ref_processed.csv"
 )
 
-# Step 5: Run CNNreg deconvolution
+# Step 6: Run CNNreg deconvolution
 result <- run_cnnreg(
   bulk_file = "bulk_processed.csv",
   ref_file = "ref_processed.csv",
   output_dir = "output/",
-  n_celltypes = length(sc_list),
+  n_celltypes = length(sc_counts_list[[1]]),
   epochs = 10000,
   prefix = "my_deconv"
 )
@@ -139,28 +156,43 @@ Sample3    380    110    750
 ```
 
 ### scRNA-seq Reference
-- **Named list** of matrices, one per cell type
-- Each matrix: rows = cells, columns = genes
+- **Two-level list**: the outer list contains reference sources, and each inner
+  named list contains one matrix per cell type
+- Each expression matrix: rows = cells, columns = genes
 - **Raw counts** (not normalized)
 - Example:
 ```r
 sc_counts_list <- list(
-  Astrocyte = astro_matrix,        # 500 cells × 20000 genes
-  Oligodendrocyte = oligo_matrix,  # 800 cells × 20000 genes
-  Neuron = neuron_matrix           # 1200 cells × 20000 genes
+  reference_A = list(
+    Astrocyte = astro_matrix_a,        # 500 cells × 20000 genes
+    Oligodendrocyte = oligo_matrix_a,  # 800 cells × 20000 genes
+    Neuron = neuron_matrix_a           # 1200 cells × 20000 genes
+  ),
+  reference_B = list(
+    Astrocyte = astro_matrix_b,
+    Oligodendrocyte = oligo_matrix_b,
+    Neuron = neuron_matrix_b
+  )
 )
+```
+
+For one reference source, wrap the named cell-type list once:
+
+```r
+sc_counts_list <- list(ref_GBM)
 ```
 
 ### From Seurat Object
 
 ```r
-# Extract counts from Seurat object
-sc_counts_list <- format_seurat_object(
+# Extract the named cell-type list from a Seurat object and wrap it as one
+# reference source.
+sc_counts_list <- list(format_seurat_object(
   seurat_obj = my_seurat,
   celltype_col = "celltype",
   assay = "RNA",
   layer = "counts"
-)
+))
 ```
 
 ## Key Functions

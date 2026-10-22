@@ -2,6 +2,7 @@
 
 export(check_cnnreg_install)
 export(deconvolve)
+export(estimate_clusterNumber)
 export(format_seurat_object)
 export(get_gene_annotation)
 export(preprocess_bulk)

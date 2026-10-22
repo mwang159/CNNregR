@@ -7,7 +7,6 @@
 preprocess_bulk(
   bulk_counts,
   genes,
-  size_factors,
   quantile_norm = 0.99,
   bulk_min_cv_final = 1e-04,
   output_file = NULL
@@ -17,8 +16,6 @@ preprocess_bulk(
 \item{bulk_counts}{Matrix or data.frame of bulk RNA-seq counts (samples × genes)}
 
 \item{genes}{Character vector of genes to include}
-
-\item{size_factors}{TMM size factors from select_genes}
 
 \item{quantile_norm}{Quantile for normalization (default: 0.99)}
 
@@ -30,15 +27,23 @@ preprocess_bulk(
 Data.frame with format: Gene, Sample1, Sample2, ... (transposed)
 }
 \description{
-Normalizes bulk RNA-seq data using TMM size factors and quantile normalization
+Normalizes bulk RNA-seq data using TMM method and scales by quantile
 }
 \examples{
 \dontrun{
-result <- select_genes(bulk_data, sc_list)
+data("pseudoBulk_GBM", package = "CNNregR")
+data("ref_GBM", package = "CNNregR")
+bulk_counts <- pseudoBulk_GBM$pseudoBulk
+sc_counts_list <- list(ref_GBM)
+
+result <- select_genes(
+  bulk_counts = bulk_counts,
+  sc_counts_list = sc_counts_list,
+  filter_biotype = FALSE
+)
 bulk_df <- preprocess_bulk(
-  bulk_counts = bulk_data,
+  bulk_counts = bulk_counts,
   genes = result$genes,
-  size_factors = result$size_factors,
   output_file = "bulk_processed.csv"
 )
 }

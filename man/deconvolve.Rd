@@ -33,7 +33,7 @@ deconvolve(
 \arguments{
 \item{bulk_counts}{Matrix or data.frame of bulk RNA-seq counts (samples × genes)}
 
-\item{sc_counts_list}{Named list of scRNA-seq count matrices per cell type}
+\item{sc_counts_list}{List of reference sources, where each source is a named list of scRNA-seq count matrices per cell type (cells × genes)}
 
 \item{output_dir}{Output directory for all results}
 
@@ -92,14 +92,23 @@ edgeR TMM normalization and k-means clustering
 }
 \examples{
 \dontrun{
-# Human samples with biotype filtering
+data("pseudoBulk_GBM", package = "CNNregR")
+data("ref_GBM", package = "CNNregR")
+data("gene_annotation", package = "CNNregR")
+
+bulk_counts <- pseudoBulk_GBM$pseudoBulk
+sc_counts_list <- list(ref_GBM)
+
 result <- deconvolve(
-  bulk_counts = bulk_data,
-  sc_counts_list = list(Astro = astro_counts, Oligo = oligo_counts),
+  bulk_counts = bulk_counts,
+  sc_counts_list = sc_counts_list,
   output_dir = "results/",
   prefix = "deconv",
+  epochs = 10000,
+  n_clusters = 5,
   filter_biotype = TRUE,
-  organism = "hsapiens"
+  gene_annotation = gene_annotation,
+  chromosomes = paste0("chr", 1:22)
 )
 }
 }

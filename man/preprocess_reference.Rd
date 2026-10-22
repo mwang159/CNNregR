@@ -8,21 +8,24 @@ preprocess_reference(
   sc_counts_list,
   bulk_df,
   genes,
-  n_clusters = 5,
+  cluster = "byRef",
+  n_clusters = 1,
   quantile_norm = 0.99,
   seed = 1235,
   output_file = NULL
 )
 }
 \arguments{
-\item{sc_counts_list}{Named list of scRNA-seq count matrices per cell type (cells × genes)}
+\item{sc_counts_list}{List of reference sources, where each source is a named list of scRNA-seq count matrices per cell type (cells × genes)}
 
 \item{bulk_df}{Preprocessed bulk data.frame (output from preprocess_bulk)}
 
 \item{genes}{Character vector of genes to include. Should be bulk_df$Gene from preprocess_bulk output
 to ensure genes match between bulk and reference after final CV filtering.}
 
-\item{n_clusters}{Number of k-means clusters per cell type (default: 5)}
+\item{cluster}{should use the reference ("byRef") or divide cells by k-means clustering ("k-means")}
+
+\item{n_clusters}{if we do k-means clustering, the number of clusters per cell type (default: 1)}
 
 \item{quantile_norm}{Quantile for normalization (default: 0.99)}
 
@@ -40,13 +43,17 @@ each cell type and matching expression scales to bulk samples.
 }
 \examples{
 \dontrun{
-# Complete workflow
-gene_result <- select_genes(bulk_data, sc_list)
-bulk_df <- preprocess_bulk(bulk_data, gene_result$genes, gene_result$size_factors)
+data("pseudoBulk_GBM", package = "CNNregR")
+data("ref_GBM", package = "CNNregR")
+bulk_counts <- pseudoBulk_GBM$pseudoBulk
+sc_counts_list <- list(ref_GBM)
+
+gene_result <- select_genes(bulk_counts, sc_counts_list, filter_biotype = FALSE)
+bulk_df <- preprocess_bulk(bulk_counts, gene_result$genes)
 
 # Use genes from bulk_df output (after final CV filtering)
 ref_df <- preprocess_reference(
-  sc_counts_list = sc_list,
+  sc_counts_list = sc_counts_list,
   bulk_df = bulk_df,
   genes = bulk_df$Gene,
   n_clusters = 5,
