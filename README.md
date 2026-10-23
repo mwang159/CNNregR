@@ -37,6 +37,17 @@ See the [CNNreg](https://github.com/mwang159/CNNreg) for more instructions.
 devtools::install_github("mwang159/CNNregR")
 ```
 
+### Alternative: Using Docker
+
+The Docker image includes both CNNreg and CNNregR:
+
+```bash
+docker pull ghcr.io/liuy12/cnnreg:0.1.0
+docker run --rm -it --gpus all ghcr.io/liuy12/cnnreg:0.1.0
+```
+
+Use `--gpus all` for GPU-enabled workloads. Omit it for CPU-only execution.
+
 ## Quick Start
 
 The package includes a small GBM example dataset for trying the workflow. The packaged objects are `pseudoBulk_GBM`, `ref_GBM`,

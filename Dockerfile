@@ -1,5 +1,5 @@
 # Build from the workspace root:
-# docker build -f scripts/CNNregR/Dockerfile -t cnnregr:0.1.0 .
+# docker build -f CNNreg/Dockerfile -t cnnreg:0.1.0 .
 
 # -----------------------------
 # Builder stage
@@ -7,7 +7,7 @@
 FROM rocker/r-ver:4.4.1 AS builder
 
 ARG MAKEFLAGS="-j2"
-ARG CNNREG_VERSION=0.1.2
+ARG CNNREG_VERSION=0.1.3
 ARG CNNREGR_REF=v0.1.0
 
 ENV DEBIAN_FRONTEND=noninteractive \
@@ -50,7 +50,7 @@ RUN wget --quiet \
 RUN conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main \
     && conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/r
 
-COPY scripts/CNNreg/environment.yml /tmp/environment.yml
+COPY CNNreg/environment.yml /tmp/environment.yml
 RUN conda env create -f /tmp/environment.yml \
     && conda run --no-capture-output -n cnnreg_env \
        python -m pip install --no-cache-dir --no-deps "CNNreg==${CNNREG_VERSION}" \
@@ -58,9 +58,9 @@ RUN conda env create -f /tmp/environment.yml \
 
 # Copy only the CNNregR renv project files before restoring dependencies.
 WORKDIR /project/CNNregR
-COPY scripts/CNNregR/.Rprofile ./.Rprofile
-COPY scripts/CNNregR/renv ./renv
-COPY scripts/CNNregR/renv.lock ./renv.lock
+COPY CNNregR/.Rprofile ./.Rprofile
+COPY CNNregR/renv ./renv
+COPY CNNregR/renv.lock ./renv.lock
 
 RUN R -q -e 'renv::restore(prompt = FALSE)' \
     && R -q -e "renv::install('mwang159/CNNregR@${CNNREGR_REF}', prompt = FALSE)"
@@ -87,13 +87,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libfontconfig1 \
     libfreetype6 \
     libfribidi0 \
-    libgit2-1.5 \
+    libgit2-dev \
     libharfbuzz0b \
-    libicu72 \
-    libjpeg62-turbo \
-    libpng16-16 \
-    libssl3 \
-    libtiff6 \
+    libicu-dev \
+    libjpeg-dev \
+    libpng-dev \
+    libssl-dev \
+    libtiff-dev \
     libxml2 \
     && rm -rf /var/lib/apt/lists/*
 
