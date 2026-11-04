@@ -65,15 +65,16 @@ data("gene_annotation", package = "CNNregR")
 
 bulk_counts <- pseudoBulk_GBM$pseudoBulk
 sc_counts_list <- list(ref_GBM)
+n_celltypes    <- length(sc_counts_list[[1]])
 
 # Run preprocessing and deconvolution
 result <- deconvolve(
   bulk_counts = bulk_counts,
   sc_counts_list = sc_counts_list,
   output_dir = "results/deconvolution/",
-  prefix = "deconv",
-  epochs = 10000,
-  n_clusters = 5,
+  prefix     = "deconv",
+  epochs     = 10000*n_celltypes,
+  n_clusters = 1,
   filter_biotype = TRUE,
   gene_annotation = gene_annotation,
   chromosomes = paste0("chr", 1:22)
@@ -145,7 +146,7 @@ result <- run_cnnreg(
   ref_file = "ref_processed.csv",
   output_dir = "output/",
   n_celltypes = length(sc_counts_list[[1]]),
-  epochs = 10000,
+  epochs = 10000*n_celltypes,
   prefix = "my_deconv"
 )
 
